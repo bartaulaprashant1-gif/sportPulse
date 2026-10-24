@@ -3,7 +3,7 @@ import {
   createMatchSchema,
   listMatchesQuerySchema,
 } from "../validation/matches.js";
-import {getMatchStatus} from "../validation/matchStatus.js"
+import { getMatchStatus } from "../validation/matchStatus.js";
 import { matches } from "../db/schema.js";
 import { db } from "../db/db.js";
 import { desc } from "drizzle-orm";
@@ -11,13 +11,14 @@ import { desc } from "drizzle-orm";
 export const matchRouter = Router();
 
 const MAX_LIMIT = 100;
+
 matchRouter.get("/", async (req, res) => {
   const parsed = listMatchesQuerySchema.safeParse(req.query);
 
   if (!parsed.success) {
     return res
       .status(400)
-      .json({ error: "Invalid query.", details: JSON.stringify(parsed.error) });
+      .json({ error: "Invalid query.", details: parsed.error.issues });
   }
 
   const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT);
@@ -31,25 +32,25 @@ matchRouter.get("/", async (req, res) => {
 
     res.json({ data: matchList });
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(500).json({ error: "Failed to list matches." });
   }
 });
+
 matchRouter.post("/", async (req, res) => {
   const parsed = createMatchSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "invalid payload",
+      details: parsed.error.issues,
+    });
+    return;
+  }
+
   const {
     data: { startTime, endTime, homeScore, awayScore },
   } = parsed;
-
-  if (!parsed.success) {
-    res
-      .status(400)
-      .json({
-        error: "invalid payload",
-        details: JSON.stringify(parsed.error),
-      });
-    return;
-  }
 
   try {
     const [event] = await db
@@ -63,6 +64,10 @@ matchRouter.post("/", async (req, res) => {
         status: getMatchStatus(startTime, endTime),
       })
       .returning();
+
+    if (res.app.locals.broadCastMatchCreated) {
+      res.app.locals.broadCastMatchCreated(event);
+    }
 
     res.status(201).json({ data: event });
   } catch (e) {
