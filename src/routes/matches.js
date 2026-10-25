@@ -3,7 +3,7 @@ import {
   createMatchSchema,
   listMatchesQuerySchema,
 } from "../validation/matches.js";
-import { getMatchStatus } from "../validation/matchStatus.js";
+import { getMatchStatus } from "../utils/matchStatus.js";
 import { matches } from "../db/schema.js";
 import { db } from "../db/db.js";
 import { desc } from "drizzle-orm";
