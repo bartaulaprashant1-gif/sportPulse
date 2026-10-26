@@ -61,16 +61,21 @@ commentaryRouter.post("/", async (req, res) => {
   }
   try {
     const { minutes, ...rest } = bodyResult.data;
-    const [result] = await db
+    const [entry] = await db
       .insert(commentary)
       .values({
         matchId: paramsResult.data.id,
-        minute: minutes,
+        minutes: minutes,
         ...rest,
       })
       .returning();
 
-    res.status(201).json({ data: result });
+
+      if(res.app.locals.broadcastCommentary){
+        res.app.locals.broadcastCommentary(entry.matchId, entry)
+      }
+
+    res.status(201).json({ data: entry });
   } catch (error) {
     console.error("Failed to create commentary:", error);
     res.status(500).json({ error: "Failed to create commentary." });
